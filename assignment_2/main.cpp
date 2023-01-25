@@ -27,14 +27,14 @@ int main()
     float potentiometer_value;
     while (true)
     {
-        potentiometer_value = potentiometer.read();
         if (button.read()) {
             led1 = led2 = led3 = 1;
         }
         else {
-                led1.write(potentiometer_value*3);
-                led2.write((potentiometer_value - 0.33)*3);
-                led3.write((potentiometer_value - 0.67)*3);
+            potentiometer_value = potentiometer.read();
+            led1.write(potentiometer_value*3);
+            led2.write((potentiometer_value - 0.33)*3);
+            led3.write((potentiometer_value - 0.67)*3);
         }
         led0 = !led0;
         thread_sleep_for(WAIT_TIME_MS);
