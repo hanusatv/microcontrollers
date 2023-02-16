@@ -1,0 +1,135 @@
+/* mbed Microcontroller Library
+ * Copyright (c) 2019 ARM Limited
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "mbed.h"
+#include "DFRobot_RGBLCD.h"
+#include <chrono>
+
+using namespace std::chrono;
+
+#define WAIT_TIME_MS 200
+#define START_TIME 10
+
+BufferedSerial pc(USBTX, USBRX, 115200);
+DFRobot_RGBLCD lcd(16, 2, D14, D15);
+Timeout timeout;
+
+DigitalOut led1(LED1);
+InterruptIn btn_startpause(D0, PullDown);
+InterruptIn btn_reset(D1, PullDown);
+InterruptIn btn_add5(D2, PullDown);
+InterruptIn btn_subtract5(D4, PullDown);
+
+uint64_t startTime = START_TIME;
+uint64_t remainingTime;
+bool bool_startPause, bool_reset, bool_add5, bool_sub5, bool_running, bool_finished;
+
+////
+//Interrupts
+////
+void interruptStartPause() {
+    bool_startPause = true;
+}
+
+void interruptReset() {
+    bool_reset = true;
+}
+
+void interruptAdd5() {
+    bool_add5 = true;
+}
+
+void interruptSub5() {
+    bool_sub5 = true;
+}
+
+////
+//Functions
+////
+void endTimeout() {
+    bool_finished = true;
+    bool_running = false;
+    startTime = START_TIME;
+}
+
+void soundAlarm() {
+    lcd.printf("Eggs finished   ");
+    bool_finished = false;
+}
+
+void startPause() {
+    if (!bool_running) {
+        timeout.attach(&endTimeout,startTime);
+    } else {
+        startTime = remainingTime;
+        timeout.detach();
+    }
+    bool_running = !bool_running;
+    bool_startPause = false;
+}
+
+void resetTimer() {
+    bool_running = bool_startPause = bool_reset = false;
+    timeout.detach();
+    startTime = START_TIME;
+    lcd.setCursor(0, 0);
+    lcd.printf("Time: 60        ");
+}
+
+void add5() {
+    if (bool_running) {
+        startTime = remainingTime + 5;
+        timeout.detach();
+        timeout.attach(&endTimeout,startTime);
+    } else {
+        startTime += 5;
+    }
+    bool_add5 = false;
+    lcd.setCursor(0, 0);
+    startTime < 10 ? lcd.printf("Time: 0%.2llu        ", startTime): lcd.printf("Time: %.2llu        ", startTime);
+}
+
+void sub5() {
+    if (bool_running) {
+        startTime = remainingTime - 5;
+        timeout.detach();
+        timeout.attach(&endTimeout,startTime);
+    } else {
+        startTime -= 5;
+    }
+    bool_sub5 = false;
+    lcd.setCursor(0, 0);
+    startTime < 10 ? lcd.printf("Time: 0%.2llu        ", startTime): lcd.printf("Time: %.2llu        ", startTime);
+}
+
+void setup() {
+    lcd.init();
+    btn_startpause.fall(&interruptStartPause);
+    btn_reset.fall(&interruptReset);
+    btn_add5.fall(&interruptAdd5);
+    btn_subtract5.fall(&interruptSub5);
+    lcd.printf("Time: 60        ");
+}
+
+int main() {
+    setup();
+    while (true)
+    {
+        lcd.setCursor(0, 0);
+        if (bool_running) {
+            remainingTime = duration_cast<milliseconds>(timeout.remaining_time()).count() / 1000;
+            printf("%.2llu\n", remainingTime);
+            remainingTime < 10 ? lcd.printf("Time: 0%.2llu        ", remainingTime): lcd.printf("Time: %.2llu        ", remainingTime);
+        } 
+        if (bool_startPause) startPause();
+        if (bool_reset) resetTimer();
+        if (bool_add5) add5();
+        if (bool_sub5) sub5();
+        if (bool_finished) soundAlarm();
+
+        led1 = !led1;
+        thread_sleep_for(WAIT_TIME_MS);
+    }
+}
