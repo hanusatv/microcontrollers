@@ -11,7 +11,6 @@
 
 using namespace std::chrono;
 
-
 #define WAIT_TIME_MS 100
 #define START_TIME 60s
 #define ALARM_PERIOD 1000
