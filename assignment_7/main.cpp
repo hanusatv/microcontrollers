@@ -35,10 +35,12 @@ void get_measurements() {
 void setup() {
     sensor.init(NULL);
     sensor.enable();
+    sensor.reset();
 }
 
 int main()
 {
+    setup();
     // Initialise the digital pin LED1 as an output
     DigitalOut led(LED1);
     if (!network) {
